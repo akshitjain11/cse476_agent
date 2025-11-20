@@ -60,7 +60,7 @@ def self_consistent_agent(question,samples = 3):
     answers = []
     for _ in range(samples):
         ans = sample_full_agent(question,temperature=0.7)
-        ans
+        answers.append(ans)
 
     cleaned = []
     for a in answers:
@@ -73,4 +73,44 @@ def self_consistent_agent(question,samples = 3):
     best_answer, _ = freq.most_common(1)[0]
 
     return best_answer
+
+def reflect(question,answer):
+    prompt = f"""
+You are checking your own work.frozenset
+
+Question: 
+{question}
+
+Proposed answer:
+{answer}
+
+Check if the answer is consistent with the question.
+If incorrect, provide a corrected final answer.frozenset
+
+Return format:
+VERIFY: correct/incorrect
+FINAL: <best-answer>
+"""
+    return call_llm(prompt)
+
+
+def reflective_agent(question,samples = 2):
+    base = self_consistent_agent(question,samples=2)
+    reflection = reflect(question,base)
+
+    if "FINAL:" in reflection:
+        return reflection.split("FINAL:")[1].strip()
+    return base
+
+def solve_all_steps_batched(steps):
+    steps_text = "\n".join(f"Step {i+1}: {step}" for i, step in enumerate(steps))
+    prompt = f"""
+Solve each of the following steps. Think step by step, but for each step end with:
+STEP <n> ANSWER: <answer>
+
+STEPS:
+{steps_text}
+"""
+    full = call_llm(prompt)
+    return full.split("\n")
     
