@@ -8,13 +8,28 @@ def simple_agent(question):
 
 
 def decompose(question):
-    prompt = (
-        "Break the followuing question into small numbered steps needed to solve it: \n\n"
-        f"{question}"
-    )
+    prompt = f"""
+    Break the question into the *minimum necessary* numbered steps to solve it.
 
-    steps = call_llm(prompt)
-    return [line.strip() for line in steps.split("\n") if line.strip()]
+    Rules:
+    - 3–5 steps max.
+    - Keep each step short (5–15 words).
+    - No long explanations.
+    - Only return numbered steps.
+
+    QUESTION:
+    {question}
+"""
+
+    response = call_llm(prompt)
+    steps = [line.strip() for line in response.split("\n") if line.strip()]
+
+    final_steps = []
+    for s in steps:
+        if s[0].isdigit():
+            final_steps.append(s)
+    return final_steps
+
 
 def solve_step(step):
     prompt = (
