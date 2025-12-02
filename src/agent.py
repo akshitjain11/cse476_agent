@@ -45,6 +45,9 @@ def solve_step(step):
 
     return ans
 
+def is_multiple_choice(question:str) -> bool:
+    return ("A." in question or "A)" in question or "(A)" in question)
+
 
 def aggregate(question,step_solutions):
     joined = "\n".join(step_solutions)
@@ -122,6 +125,15 @@ FINAL: <best-answer>
 
 def reflective_agent(question,samples = 2):
 
+    if is_multiple_choice(question):
+        prompt = f"Select the correct option. Answer ONLY the letter.\n\n{question}"
+        out=safe_call(prompt)
+        if out.startswith("Error:"):
+            return "Unable to answer multiple choice question."
+        for c in ["(",")",".","Option","option"," "]:
+            out=out.replace(c,"")
+        return out.strip()
+
     if is_coding_task(question):
         code = coding_agent(question)
         return code
@@ -165,26 +177,27 @@ def safe_call(prompt,temperature = 0):
 
 def is_coding_task(question:str) -> bool:
     coding_keywords = [
-        "write a program",
-        "implement",
-        "code",
-        "function",
-        "script",
-        "algorithm",
-        "pseudocode",
-        "class",
-        "method",
-        "library",
-        "task_func",
-        "You should write code",
-        "import",
+        "you should write self-contained code",
+        "you should write code",
+        "write a function",
+        "write python code",
+        "starting with:",
+        "def task_func(",
+        "import ",
+        "sklearn",
+        "pandas",
+        "matplotlib",
+        "numpy",
+        "requests",
+        "sqlite",
+        "random_seed",
     ]
     question_lower = question.lower()
     return any(keyword in question_lower for keyword in coding_keywords)
 
 def coding_agent(question:str) -> str:
     prompt = f"""
-    Write ONLY the final Python code required.str
+    Write ONLY the final Python code required to solve the following task.
 
 Do NOT explain.
 Do NOT describe steps.
