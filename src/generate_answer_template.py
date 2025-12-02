@@ -16,12 +16,12 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 
-INPUT_PATH = Path("cse_476_final_project_test_data.json")
-OUTPUT_PATH = Path("cse_476_final_project_answers.json")
+INPUT_PATH = Path("../cse_476_final_project_test_data.json")
+OUTPUT_PATH = Path("../cse_476_final_project_answers.json")
 
 
 def load_questions(path: Path) -> List[Dict[str, Any]]:
-    with path.open("r") as fp:
+    with path.open("r", encoding="utf-8") as fp:
         data = json.load(fp)
     if not isinstance(data, list):
         raise ValueError("Input file must contain a list of question objects.")
@@ -67,10 +67,10 @@ def main() -> None:
     questions = load_questions(INPUT_PATH)
     answers = build_answers(questions)
 
-    with OUTPUT_PATH.open("w") as fp:
+    with OUTPUT_PATH.open("w", encoding="utf-8") as fp:
         json.dump(answers, fp, ensure_ascii=False, indent=2)
 
-    with OUTPUT_PATH.open("r") as fp:
+    with OUTPUT_PATH.open("r", encoding="utf-8") as fp:
         saved_answers = json.load(fp)
     validate_results(questions, saved_answers)
     print(

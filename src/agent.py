@@ -43,7 +43,7 @@ def solve_step(step):
     if ans.startswith("Error:"):
         return "Unable to solve step."
 
-    return ans(prompt)
+    return ans
 
 
 def aggregate(question,step_solutions):
@@ -121,6 +121,11 @@ FINAL: <best-answer>
 
 
 def reflective_agent(question,samples = 2):
+
+    if is_coding_task(question):
+        code = coding_agent(question)
+        return code
+    
     base = self_consistent_agent(question,samples=2,agent_fn = batched_full_agent)
     reflection = reflect(question,base)
 
@@ -156,4 +161,49 @@ def safe_call(prompt,temperature = 0):
         return call_llm(prompt,temperature=temperature)
     except Exception as e:
         return f"Error: {str(e)}"
+    
+
+def is_coding_task(question:str) -> bool:
+    coding_keywords = [
+        "write a program",
+        "implement",
+        "code",
+        "function",
+        "script",
+        "algorithm",
+        "pseudocode",
+        "class",
+        "method",
+        "library",
+        "task_func",
+        "You should write code",
+        "import",
+    ]
+    question_lower = question.lower()
+    return any(keyword in question_lower for keyword in coding_keywords)
+
+def coding_agent(question:str) -> str:
+    prompt = f"""
+    Write ONLY the final Python code required.str
+
+Do NOT explain.
+Do NOT describe steps.
+Return pure code only
+
+QUESTION:
+{question}
+"""
+    code = safe_call(prompt)
+    if code.startswith("Error:"):
+        return "Unable to generate code."
+    return code
+    
+
+def extract_final_answer(text):
+    if not text:
+        return "No answer found."
+    if "FINAL:" in text:
+        return text.split("FINAL:")[1].strip()
+    
+    return text.strip()
     
