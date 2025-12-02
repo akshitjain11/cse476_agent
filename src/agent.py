@@ -81,6 +81,15 @@ def aggregate(question,step_solutions):
     return ans
 
 def is_math_question(question:str) -> bool:
+    q = question.lower()
+
+    math_patterns = [
+         "how many", "difference", "sum", "total", "left", "gave",
+        "increase", "decrease", "less than", "more than",
+        "ratio", "average", "mean", "probability"
+    ]
+    if any (p in q for p in math_patterns):
+        return True
     keywords = [
         "midpoint", "quadratic", "equation", "solve for x", "integral",
         "derivative", "function", "calculate", "what is", "value of","equations",
@@ -89,8 +98,7 @@ def is_math_question(question:str) -> bool:
         "frac"
     ]
 
-    q = question.lower()
-
+    
     if "24-game challenge" in q:
         return False
     
@@ -302,6 +310,11 @@ def reflective_agent(question,samples = 2):
         log_agent_use("24_GAME_AGENT", question)
         solution = game_24_agent(question)
         return solution
+    
+    if has_context(question):
+        log_agent_use("CONTEXT_AGENT", question)
+        context_ans = context_agent(question)
+        return context_ans
 
     if is_multiple_choice(question):
         log_agent_use("MULTIPLE_CHOICE_AGENT", question)
@@ -320,10 +333,7 @@ def reflective_agent(question,samples = 2):
         code = coding_agent(question)
         return code
     
-    if has_context(question):
-        log_agent_use("CONTEXT_AGENT", question)
-        context_ans = context_agent(question)
-        return context_ans
+    
     
     if is_math_question(question):
         log_agent_use("MATH_AGENT", question)
