@@ -47,7 +47,7 @@ def solve_step(step):
     return ans
 
 def is_multiple_choice(question:str) -> bool:
-    return ("A." in question or "A)" in question or "(A)" in question)
+    return ("A." in question or "A)" in question or "(A)" in question or "Options:" in question or "options:" in question)
 
 
 def aggregate(question,step_solutions):
@@ -70,16 +70,29 @@ def is_math_question(question:str) -> bool:
         "midpoint", "quadratic", "equation", "solve for x", "integral",
         "derivative", "function", "calculate", "what is", "value of","equations",
         "algebra", "geometry", "trigonometry", "logarithm", "probability","parentheses",
-        "divide", "multiply", "add", "subtract", "sum", "product","roots","integer","integers","perfect square"
+        "divide", "multiply", "add", "subtract", "sum", "product","roots","integer","integers","perfect square","power of"
     ]
 
+    q = question.lower()
+    if any(s in q for s in ["$","=","+","*","^"]):
+        return True
+    return any(kw.lower() in q for kw in keywords)
+
+def is_planning_task(question:str) -> bool:
+    keywords = [
+        "[PLAN]",
+        "[STATEMENT]",
+        "actions i can do",
+        "restrictions on my actions",
+        "initial conditions",
+        "my goal is to have"
+    ]
     q = question.lower()
     return any(kw.lower() in q for kw in keywords)
 
 def math_agent(question:str) -> str:
     prompt = f"""
     You are an expert AIME competition solver.
-    Solve the problem concisely and accurately.
 
 Rules:
 -Perform accurate algebra and geometry.
