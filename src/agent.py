@@ -291,14 +291,13 @@ def is_coding_task(question:str) -> bool:
 def coding_agent(question:str) -> str:
     prompt = f"""
     You are an expert Python programmer.
-    Write clean, correct Python code
 
-    Rules:
-    - Use standard libraries only.
-    - Include necessary imports.
-    - Write a self-contained function.
-    - No explanations, only code.
-    - Ensure code runs without errors.
+    Critical Rules:
+    - Write ONLY the function code, nothing else
+    - Include necessary imports at the top
+    - Use proper Python syntax
+    - No explanations, no markdown, no test cases
+    - Return working code only
 
 QUESTION:
 {question}
