@@ -1,8 +1,9 @@
 from llm_api import call_llm
 from collections import Counter
+import re
 
 def simple_agent(question):
-    prompt = f"Think step by step and answer this quetion: \n\n{question}"
+    prompt = f"Think step by step and answer this question: \n\n{question}"
     answer = call_llm(prompt)
     return answer
 
@@ -64,6 +65,39 @@ def aggregate(question,step_solutions):
 
     return ans
 
+def is_math_question(question:str) -> bool:
+    keywords = [
+        "midpoint", "quadratic", "equation", "solve for x", "integral",
+        "derivative", "function", "calculate", "what is", "value of","equations",
+        "algebra", "geometry", "trigonometry", "logarithm", "probability","parentheses",
+        "divide", "multiply", "add", "subtract", "sum", "product","roots","integer","integers","perfect square"
+    ]
+
+    q = question.lower()
+    return any(kw.lower() in q for kw in keywords)
+
+def math_agent(question:str) -> str:
+    prompt = f"""
+    You are an expert AIME competition solver.
+    Solve the problem concisely and accurately.
+
+Rules:
+-Perform accurate algebra and geometry.
+-Compute everything exactly
+-answers are always integers between 0 and 999.
+-No explanations, only final answer.
+-No steps.
+
+QUESTION:
+{question}
+"""
+    ans = safe_call(prompt)
+    if ans.startswith("Error:"):
+        return "Unable to solve math question."
+    nums = re.findall(r"-?\d+\.?\d*", ans)
+    if nums:
+        return nums[-1].strip()
+    return ans.strip()
 
 def batched_full_agent(question):
     steps = decompose(question)
@@ -130,13 +164,17 @@ def reflective_agent(question,samples = 2):
         out=safe_call(prompt)
         if out.startswith("Error:"):
             return "Unable to answer multiple choice question."
-        for c in ["(",")",".","Option","option"," "]:
+        for c in ["(",")",".","Option","option"]:
             out=out.replace(c,"")
         return out.strip()
 
     if is_coding_task(question):
         code = coding_agent(question)
         return code
+    
+    if is_math_question(question):
+        math_ans = math_agent(question)
+        return math_ans
     
     base = self_consistent_agent(question,samples=2,agent_fn = batched_full_agent)
     reflection = reflect(question,base)
@@ -180,6 +218,10 @@ def is_coding_task(question:str) -> bool:
         "you should write self-contained code",
         "you should write code",
         "write a function",
+        "implement a function",
+        "create a function",
+        "def ",
+        "python"
         "write python code",
         "starting with:",
         "def task_func(",
@@ -193,15 +235,21 @@ def is_coding_task(question:str) -> bool:
         "random_seed",
     ]
     question_lower = question.lower()
+    if "def " in question_lower or "write" in question_lower and "function" in question_lower:
+        return True
     return any(keyword in question_lower for keyword in coding_keywords)
 
 def coding_agent(question:str) -> str:
     prompt = f"""
-    Write ONLY the final Python code required to solve the following task.
+    You are an expert Python programmer.
+    Write clean, correct Python code
 
-Do NOT explain.
-Do NOT describe steps.
-Return pure code only
+    Rules:
+    - Use standard libraries only.
+    - Include necessary imports.
+    - Write a self-contained function.
+    - No explanations, only code.
+    - Ensure code runs without errors.
 
 QUESTION:
 {question}
