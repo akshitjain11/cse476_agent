@@ -3,9 +3,21 @@ from collections import Counter
 import re
 
 def simple_agent(question):
-    prompt = f"Think step by step and answer this question: \n\n{question}"
+    prompt = f"""Think step by step and answer this question concisely.
+
+RULES:
+- Provide a direct, clear answer
+-No markdown formatting unless specified
+-No bold text or special formatting
+-Just give the answer
+
+QUESTION:
+{question}
+
+Answer:"""
+
     answer = call_llm(prompt)
-    return answer
+    return answer.strip()
 
 
 def decompose(question):
@@ -70,7 +82,8 @@ def is_math_question(question:str) -> bool:
         "midpoint", "quadratic", "equation", "solve for x", "integral",
         "derivative", "function", "calculate", "what is", "value of","equations",
         "algebra", "geometry", "trigonometry", "logarithm", "probability","parentheses",
-        "divide", "multiply", "add", "subtract", "sum", "product","roots","integer","integers","perfect square","power of"
+        "divide", "multiply", "add", "subtract", "sum", "product","roots","integer","integers","perfect square","power of",
+        "frac"
     ]
 
     q = question.lower()
@@ -93,21 +106,22 @@ def is_planning_task(question:str) -> bool:
 def planning_agent(question:str) -> str:
     prompt = f"""
     You are an expert at sequential planning and reasoning
-Analyze the problem carefully and generate a valid sequence of actions.
 
-RULES:
-- Read all constraints and initial conditions carefully.
--Generate actions that satisfy all preconditions.
--Each action must be valid given the current state.
+CRITICAL RULES:
+- Analyze the PROBLEM very carefully, paying attention to ALL constraints
+- Think through each action step by step
+-Verify that each action's preconditions are satisfied before proceeding
+- Track the state changes after each action
+-Make sure the final state matches the GOAL exactly
 -Output ONLY the [PLAN] section with valid actions
--Do NOT include explanations
+-Do NOT include explanations or reasoning
 
 PROBLEM:
 {question}
 
-OUTPUT (only the plan):
+YOUR PLAN (only [PLAN] ... [PLAN END]):
 """
-    plan = safe_call(prompt,temperature=0.3)
+    plan = safe_call(prompt,temperature=0.2)
     if plan.startswith("Error:"):
         return "Unable to generate plan."
     
@@ -125,18 +139,31 @@ def math_agent(question:str) -> str:
     You are an expert AIME competition solver.
 
 Rules:
--Perform accurate algebra and geometry.
--Compute everything exactly
--answers are always integers between 0 and 999.
--No explanations, only final answer.
--No steps.
+-Answers are ALWAYS integers between 0 and 999.
+-Show your mathematical reasoning clearly
+-Perform exact calculations
+-Double check arithmetic
+-State the final answer clearly at the end as "The answer is: X"
 
 QUESTION:
 {question}
 """
-    ans = safe_call(prompt)
+    ans = safe_call(prompt,temperature=0)
     if ans.startswith("Error:"):
         return "Unable to solve math question."
+    
+    patterns = [
+        r"The answer is[:\s]+(-?\d+)",
+        r"Final answer[:\s]+(-?\d+)",
+        r"ANSWER[:\s]+(-?\d+)",
+        r"=-?\d+",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern,ans.lower())
+        if match:
+            num = int(match.group(1))
+            if 0<=num<=999:
+                return str(num)
     nums = re.findall(r"-?\d+\.?\d*", ans)
     if nums:
         return nums[-1].strip()
@@ -225,6 +252,16 @@ def reflective_agent(question,samples = 2):
         math_ans = math_agent(question)
         return math_ans
     
+    simple = [
+        "facts:", "context:", "which", "what", "does", "is", "are",
+        "would", "could", "should"
+    ]
+    q_lower = question.lower()
+    is_simple = any(ind in q_lower for ind in simple) and len(question)<1000
+
+    if is_simple:
+        return simple_agent(question)
+    
     base = self_consistent_agent(question,samples=2,agent_fn = batched_full_agent)
     reflection = reflect(question,base)
 
@@ -255,11 +292,17 @@ STEPS:
     return results
 
 
-def safe_call(prompt,temperature = 0):
-    try:
-        return call_llm(prompt,temperature=temperature)
-    except Exception as e:
-        return f"Error: {str(e)}"
+def safe_call(prompt,temperature = 0,max_retries=2):
+    for attempt in range(max_retries):
+        try:
+            result =  call_llm(prompt,temperature=temperature)
+            if result and len(result.strip())>0:
+                return result
+        except Exception as e:
+            if attempt == max_retries - 1:
+                return f"Error: {str(e)}"
+            continue
+    return "Error: Maximum retries exceeded."
     
 
 def is_coding_task(question:str) -> bool:
