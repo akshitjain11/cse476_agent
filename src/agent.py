@@ -90,6 +90,36 @@ def is_planning_task(question:str) -> bool:
     q = question.lower()
     return any(kw.lower() in q for kw in keywords)
 
+def planning_agent(question:str) -> str:
+    prompt = f"""
+    You are an expert at sequential planning and reasoning
+Analyze the problem carefully and generate a valid sequence of actions.
+
+RULES:
+- Read all constraints and initial conditions carefully.
+-Generate actions that satisfy all preconditions.
+-Each action must be valid given the current state.
+-Output ONLY the [PLAN] section with valid actions
+-Do NOT include explanations
+
+PROBLEM:
+{question}
+
+OUTPUT (only the plan):
+"""
+    plan = safe_call(prompt,temperature=0.3)
+    if plan.startswith("Error:"):
+        return "Unable to generate plan."
+    
+    if "[PLAN]" in plan:
+        start = plan.find("[PLAN]")
+        end = plan.find("[PLAN END]")
+        if end>start:
+            return plan[start:end+10].strip()
+        else:
+            return plan[start:].strip()
+    return plan.strip()
+
 def math_agent(question:str) -> str:
     prompt = f"""
     You are an expert AIME competition solver.
@@ -172,14 +202,20 @@ FINAL: <best-answer>
 
 def reflective_agent(question,samples = 2):
 
+    if is_planning_task(question):
+        plan = planning_agent(question)
+        return plan
+
     if is_multiple_choice(question):
-        prompt = f"Select the correct option. Answer ONLY the letter.\n\n{question}"
+        prompt = f"Select the correct option. Answer ONLY with the letter. (A, B, C, or D)\n\nQuestion:\n{question}"
         out=safe_call(prompt)
         if out.startswith("Error:"):
             return "Unable to answer multiple choice question."
-        for c in ["(",")",".","Option","option"]:
-            out=out.replace(c,"")
-        return out.strip()
+        out_clean = out.strip()
+        for char in out_clean:
+            if char.upper() in "ABCDEFGH":
+                return char.upper()
+        return out_clean
 
     if is_coding_task(question):
         code = coding_agent(question)
