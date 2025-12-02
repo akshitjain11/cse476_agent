@@ -120,9 +120,37 @@ YOUR ANSWER:
     if "Solution:" in result:
         for line in result.split("\n"):
             if "Solution:" in line:
-                return line.split()
+                return line.strip()
     
     return result.strip()
+
+def has_context(question: str) -> bool:
+    context_keywords = [
+        "context:","facts:","[par]","[doc]","[tle]","given that","according to","based on"
+    ]
+    q = question.lower()
+    return any(kw in q for kw in context_keywords)
+
+def context_agent(question:str) -> str:
+    prompt = f"""
+    You are an expert at answering questions based on provided context.
+
+CRITICAL RULES:
+-Read the CONTEXT carefully
+-Find the answer directly from the CONTEXT
+-Give a concise, direct answer
+-Do not add information not in the CONTEXT
+-If the answer is a title/name, give it exactly as shown
+
+QUESTION WITH CONTEXT:
+{question}
+
+YOUR ANSWER:
+"""
+    answer = safe_call(prompt,temperature=0)
+    if answer.startswith("Error:"):
+        return "Unable to answer question with context."
+    return answer.strip()
 
 def is_planning_task(question:str) -> bool:
     keywords = [
@@ -289,12 +317,16 @@ def reflective_agent(question,samples = 2):
         math_ans = math_agent(question)
         return math_ans
     
+    if has_context(question):
+        context_ans = context_agent(question)
+        return context_ans
+    
     simple = [
         "facts:", "context:", "which", "what", "does", "is", "are",
         "would", "could", "should"
     ]
     q_lower = question.lower()
-    is_simple = any(ind in q_lower for ind in simple) and len(question)<1000
+    is_simple = any(ind in q_lower for ind in simple)
 
     if is_simple:
         return simple_agent(question)

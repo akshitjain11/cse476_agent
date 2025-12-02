@@ -1,3 +1,4 @@
 .venv/
+cse_476_final_project_answers.json
 src/random_check.py
 src/checker.py
