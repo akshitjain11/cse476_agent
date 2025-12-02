@@ -87,9 +87,42 @@ def is_math_question(question:str) -> bool:
     ]
 
     q = question.lower()
+
+    if "24-game challenge" in q:
+        return False
+    
     if any(s in q for s in ["$","=","+","*","^"]):
         return True
     return any(kw.lower() in q for kw in keywords)
+
+def is_24_game_question(question:str) -> bool:
+    return "24-game challenge" in question.lower()
+
+def game_24_agent(question:str) -> str:
+    prompt = f"""
+    You are an expert at solving 24-game puzzle.
+
+CRITICAL RULES:
+- Use each number exactly once
+- Only use operations +, -, *, / and parentheses
+- Find an expression that equals exactly 24
+-Reply ONLY with: Solution: <expression>
+-No explanations, no other text
+
+CHALLENGE:
+{question}
+
+YOUR ANSWER:
+"""
+    result = safe_call(prompt,temperature=0.3)
+    if result.startswith("Error:"):
+        return "Unable to solve 24-game challenge."
+    if "Solution:" in result:
+        for line in result.split("\n"):
+            if "Solution:" in line:
+                return line.split()
+    
+    return result.strip()
 
 def is_planning_task(question:str) -> bool:
     keywords = [
@@ -232,6 +265,10 @@ def reflective_agent(question,samples = 2):
     if is_planning_task(question):
         plan = planning_agent(question)
         return plan
+    
+    if is_24_game_question(question):
+        solution = game_24_agent(question)
+        return solution
 
     if is_multiple_choice(question):
         prompt = f"Select the correct option. Answer ONLY with the letter. (A, B, C, or D)\n\nQuestion:\n{question}"
