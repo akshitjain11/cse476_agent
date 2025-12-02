@@ -2,6 +2,9 @@ from llm_api import call_llm
 from collections import Counter
 import re
 
+def log_agent_use(agent_name: str, question: str):
+    print(f"ROUTING QUESTION TO AGENT: {agent_name}")
+
 def simple_agent(question):
     prompt = f"""Think step by step and answer this question concisely.
 
@@ -291,14 +294,17 @@ FINAL: <best-answer>
 def reflective_agent(question,samples = 2):
 
     if is_planning_task(question):
+        log_agent_use("PLANNING_AGENT", question)
         plan = planning_agent(question)
         return plan
     
     if is_24_game_question(question):
+        log_agent_use("24_GAME_AGENT", question)
         solution = game_24_agent(question)
         return solution
 
     if is_multiple_choice(question):
+        log_agent_use("MULTIPLE_CHOICE_AGENT", question)
         prompt = f"Select the correct option. Answer ONLY with the letter. (A, B, C, or D)\n\nQuestion:\n{question}"
         out=safe_call(prompt)
         if out.startswith("Error:"):
@@ -310,16 +316,20 @@ def reflective_agent(question,samples = 2):
         return out_clean
 
     if is_coding_task(question):
+        log_agent_use("CODING_AGENT", question)
         code = coding_agent(question)
         return code
     
+    if has_context(question):
+        log_agent_use("CONTEXT_AGENT", question)
+        context_ans = context_agent(question)
+        return context_ans
+    
     if is_math_question(question):
+        log_agent_use("MATH_AGENT", question)
         math_ans = math_agent(question)
         return math_ans
     
-    if has_context(question):
-        context_ans = context_agent(question)
-        return context_ans
     
     simple = [
         "facts:", "context:", "which", "what", "does", "is", "are",
@@ -329,8 +339,10 @@ def reflective_agent(question,samples = 2):
     is_simple = any(ind in q_lower for ind in simple)
 
     if is_simple:
+        log_agent_use("SIMPLE_AGENT", question)
         return simple_agent(question)
     
+    log_agent_use("REFLECTIVE_REASONING_AGENT", question)
     base = self_consistent_agent(question,samples=2,agent_fn = batched_full_agent)
     reflection = reflect(question,base)
 
