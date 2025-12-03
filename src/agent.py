@@ -112,6 +112,7 @@ def is_24_game_question(question:str) -> bool:
 def game_24_agent(question:str) -> str:
     prompt = f"""
     You are an expert at solving 24-game puzzle.
+    
 
 CRITICAL RULES:
 - Use each number exactly once
@@ -162,6 +163,50 @@ YOUR ANSWER:
     if answer.startswith("Error:"):
         return "Unable to answer question with context."
     return answer.strip()
+
+
+def is_easy_math_question(question:str) -> bool:
+    q = question.lower()
+    if re.fullmatch(r"[0-9\+\-\*\/\(\)\s]+", q):
+        return True
+
+    easy_keywords = [
+        "what is", "calculate", "find", "value of",
+        "sum", "difference", "product", "quotient",
+        "plus", "minus", "times", "divided by", "how many","how much","what is","calculate","find","pounds","dollars","percent""times as much","more than", "fewer than","difference","sum","total","sold","bought","weigh","weighed","cost","pay","commission"
+        ]
+
+    if any(kw in q for kw in easy_keywords):
+        num_count = len(re.findall(r"\d+", q))
+        if num_count <=6:
+            return True
+
+    return False
+
+def easy_math_agent(question: str) -> str:
+    prompt = f"""
+You are an expert at solving simple arithmetic and short word problems.
+
+RULES:
+- Solve the problem in your head.
+- Do NOT show steps.
+- Do NOT explain.
+- Answer ONLY with the final number.
+- No words, no punctuation, no labels.
+
+QUESTION:
+{question}
+
+FINAL ANSWER:"""
+
+    ans = safe_call(prompt, temperature=0)
+    ans = ans.strip()
+    ans = ans.replace("FINAL ANSWER:", "").strip()
+    nums = re.findall(r"-?\d+\.?\d*", ans)
+    if nums:
+        return nums[-1]
+
+    return ans
 
 def is_planning_task(question:str) -> bool:
     keywords = [
@@ -336,9 +381,13 @@ def reflective_agent(question,samples = 2):
     
     
     if is_math_question(question):
-        log_agent_use("MATH_AGENT", question)
-        math_ans = math_agent(question)
-        return math_ans
+        if is_easy_math_question(question):
+            log_agent_use("EASY_MATH_AGENT",question)
+            return easy_math_agent(question)
+        else:
+            log_agent_use("MATH_AGENT", question)
+            math_ans = math_agent(question)
+            return math_ans
     
     
     simple = [
