@@ -2,3 +2,6 @@
 cse_476_final_project_answers.json
 src/random_check.py
 src/checker.py
+__pycache__/
+*.pyc
+agent_new.py

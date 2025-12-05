@@ -6,18 +6,12 @@ def log_agent_use(agent_name: str, question: str):
     print(f"ROUTING QUESTION TO AGENT: {agent_name}")
 
 def simple_agent(question):
-    prompt = f"""Think step by step and answer this question concisely.
-
-RULES:
-- Provide a direct, clear answer
--No markdown formatting unless specified
--No bold text or special formatting
--Just give the answer
+    prompt = f"""Answer this question directly and concisely. Give ONLY the final answer, no explanation.
 
 QUESTION:
 {question}
 
-Answer:"""
+ANSWER (brief):"""
 
     answer = call_llm(prompt)
     return answer.strip()
@@ -347,6 +341,38 @@ FINAL: <best-answer>
         return "Unable to reflect on answer."
     return a
 
+def mcq_agent(question: str) -> str:
+    """Specialized MCQ agent with better letter extraction."""
+    prompt = f"""This is a multiple choice question. Select the correct option.
+
+RULES:
+- Analyze the question carefully
+- Reply with ONLY the letter (A, B, C, D, etc.)
+- Do NOT include option text or explanations
+
+QUESTION:
+{question}
+
+ANSWER (letter only):"""
+    
+    out = safe_call(prompt, temperature=0)
+    if out.startswith("Error:"):
+        return "A"
+    
+    out_clean = out.strip().upper()
+    if len(out_clean) == 1 and out_clean in "ABCDEFGH":
+        return out_clean
+    
+    match = re.match(r'^([A-H])[\.\)\:]', out_clean)
+    if match:
+        return match.group(1)
+    match = re.search(r'(?:answer|choice|option)[\s:]+([A-H])\b', out_clean)
+    if match:
+        return match.group(1)
+    for char in out_clean:
+        if char in "ABCDEFGH":
+            return char 
+    return "A"
 
 def reflective_agent(question,samples = 2):
 
@@ -367,15 +393,7 @@ def reflective_agent(question,samples = 2):
 
     if is_multiple_choice(question):
         log_agent_use("MULTIPLE_CHOICE_AGENT", question)
-        prompt = f"Select the correct option. Answer ONLY with the letter. (A, B, C, or D)\n\nQuestion:\n{question}"
-        out=safe_call(prompt)
-        if out.startswith("Error:"):
-            return "Unable to answer multiple choice question."
-        out_clean = out.strip()
-        for char in out_clean:
-            if char.upper() in "ABCDEFGH":
-                return char.upper()
-        return out_clean
+        return mcq_agent(question)
 
     if is_coding_task(question):
         log_agent_use("CODING_AGENT", question)
@@ -478,12 +496,11 @@ def is_coding_task(question:str) -> bool:
 
 def coding_agent(question:str) -> str:
     prompt = f"""
-    You are an expert Python programmer.
+    You are an expert programmer.
 
     Critical Rules:
     - Write ONLY the function code, nothing else
     - Include necessary imports at the top
-    - Use proper Python syntax
     - No explanations, no markdown, no test cases
     - Return working code only
 
