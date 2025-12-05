@@ -107,6 +107,29 @@ def is_math_question(question:str) -> bool:
 def is_24_game_question(question:str) -> bool:
     return "24-game challenge" in question.lower()
 
+def is_sequence_pattern_question(question:str) -> bool:
+    q_lower = question.lower()
+    keywords = ["complete the rest of the sequence","complete the sequence",]
+    if any(kw in q_lower for kw in keywords):
+        return True
+    
+def sequence_pattern_agent(question:str) -> str:
+    prompt = f"""Complete this sequence or pattern question. Give ONLY the completed sequence
+RULES:
+- Analyze the pattern carefully
+- If it's brackets/parentheses, ensure they are properly balanced
+- Reply with ONLY the completed sequence
+- No explanations, no extra text
+
+{question}
+
+COMPLETED SEQUENCE:"""
+    answer = safe_call(prompt,temperature=0.2)
+    if answer.startswith("Error:"):
+        return "Unable to complete sequence." 
+    
+    return answer
+
 def game_24_agent(question:str) -> str:
     prompt = f"""
     You are an expert at solving 24-game puzzle.
@@ -386,6 +409,10 @@ def reflective_agent(question,samples = 2):
         solution = game_24_agent(question)
         return solution
     
+    if is_sequence_pattern_question(question):
+        log_agent_use("SEQUENCE_PATTERN_AGENT",question)
+        return sequence_pattern_agent(question)
+    
     if has_context(question):
         log_agent_use("CONTEXT_AGENT", question)
         context_ans = context_agent(question)
@@ -403,6 +430,8 @@ def reflective_agent(question,samples = 2):
     
     
     if is_math_question(question):
+        if is_sequence_pattern_question(question):
+            return sequence_pattern_agent(question)
         if is_easy_math_question(question):
             log_agent_use("EASY_MATH_AGENT",question)
             return easy_math_agent(question)
