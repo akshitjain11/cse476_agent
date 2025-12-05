@@ -1,7 +1,8 @@
 from llm_api import call_llm
 from collections import Counter
 import re
-
+import concurrent.futures
+import time
 def log_agent_use(agent_name: str, question: str):
     print(f"ROUTING QUESTION TO AGENT: {agent_name}")
 
@@ -98,7 +99,7 @@ def is_math_question(question:str) -> bool:
         return True
 
     math_patterns = [
-         "how many", "difference", "sum", "total", "left", "gave",
+         "how many", "difference", "sum", "total",
         "increase", "decrease", "less than", "more than",
         "ratio", "average", "mean", "probability"
     ]
@@ -172,7 +173,7 @@ YOUR ANSWER:
 
 def has_context(question: str) -> bool:
     context_keywords = [
-        "context:","facts:","[par]","[doc]","[tle]","given that","according to","based on"
+        "context:","facts:","[par]","[doc]","[tle]","given that","according to","based on","about","About"
     ]
     q = question.lower()
     return any(kw in q for kw in context_keywords)
@@ -258,7 +259,9 @@ def is_planning_task(question:str) -> bool:
         "actions i can do",
         "restrictions on my actions",
         "initial conditions",
-        "my goal is to have"
+        "my goal is to have",
+        "I have to plan the",
+        "I am playing with a set of objects"
     ]
     q = question.lower()
     return any(kw.lower() in q for kw in keywords)
@@ -506,16 +509,24 @@ STEPS:
     return results
 
 
-def safe_call(prompt,temperature = 0,max_retries=2):
+def safe_call(prompt,temperature = 0,max_retries=1,timeout=5):
+    def _call():
+        return call_llm(prompt, temperature=temperature)
+
     for attempt in range(max_retries):
         try:
-            result =  call_llm(prompt,temperature=temperature)
-            if result and len(result.strip())>0:
-                return result
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(_call)
+                return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            print("LLM TIMEOUT — retrying...")
+            if attempt == max_retries - 1:
+                return "Error: Timeout"
         except Exception as e:
+            print(f"⚠️ LLM ERROR: {e}")
             if attempt == max_retries - 1:
                 return f"Error: {str(e)}"
-            continue
+
     return "Error: Maximum retries exceeded."
     
 
