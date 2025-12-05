@@ -75,11 +75,27 @@ def aggregate(question,step_solutions):
     return ans
 
 def is_math_question(question:str) -> bool:
-    if len(question) > 250:   
-        return False
+    # if len(question) > 250:   
+    #     return False
     q = question.lower()
-    if any(x in q for x in ["context:", "according to", "based on the following", "passage"]):
+    if any(x in q for x in ["context:", "[par]", "[doc]"]):
         return False
+    
+    if is_sequence_pattern_question(question):
+        return False
+    
+    if "24-game challenge" in q:
+        return False
+    
+    if any(s in question for s in ["$", "\\frac", "\\mbox", "\\cos", "\\sin", 
+                                     "\\cdot", "\\circ", "\\sqrt"]):
+        return True
+    aime_terms = [
+        "tetrahedron", "polyhedra", "triangle", "midpoint",
+        "relatively prime", "positive integers", "sequence"
+    ]
+    if any(term in q for term in aime_terms):
+        return True
 
     math_patterns = [
          "how many", "difference", "sum", "total", "left", "gave",
@@ -96,9 +112,6 @@ def is_math_question(question:str) -> bool:
         "frac","percent","%"
     ]
 
-    
-    if "24-game challenge" in q:
-        return False
     
     if any(s in q for s in ["$","=","+","*","^"]):
         return True
@@ -188,13 +201,22 @@ YOUR ANSWER:
 
 def is_easy_math_question(question:str) -> bool:
     q = question.lower()
+    if has_context(question):
+        return False
     if re.fullmatch(r"[0-9\+\-\*\/\(\)\s]+", q):
         return True
+    
+    exclude = [
+        "$", "\\frac", "\\mbox", "\\cos", "\\sin", "\\cdot", "\\circ", "\\sqrt" "tetrahedron", "polyhedra", "triangle", "midpoint",
+        "relatively prime", "positive integers", "sequence"]
+    
+    if any(x in question for x in exclude):
+        return False
 
     easy_keywords = [
-        "what is", "calculate", "find", "value of",
+     "calculate", "find", "value of",
         "sum", "difference", "product", "quotient",
-        "plus", "minus", "times", "divided by", "how many","how much","what is","calculate","find","pounds","dollars","percent""times as much","more than", "fewer than","difference","sum","total","sold","bought","weigh","weighed","cost","pay","commission"
+        "plus", "minus", "times", "divided by", "how many","how much","calculate","find","pounds","dollars","percent""times as much","more than", "fewer than","difference","sum","total","sold","bought","weigh","weighed","cost","pay","commission"
         ]
 
     if any(kw in q for kw in easy_keywords):
