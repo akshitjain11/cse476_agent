@@ -81,7 +81,11 @@ def aggregate(question,step_solutions):
     return ans
 
 def is_math_question(question:str) -> bool:
+    if len(question) > 250:   
+        return False
     q = question.lower()
+    if any(x in q for x in ["context:", "according to", "based on the following", "passage"]):
+        return False
 
     math_patterns = [
          "how many", "difference", "sum", "total", "left", "gave",
@@ -92,10 +96,10 @@ def is_math_question(question:str) -> bool:
         return True
     keywords = [
         "midpoint", "quadratic", "equation", "solve for x", "integral",
-        "derivative", "function", "calculate", "what is", "value of","equations",
+        "derivative", "function", "calculate", "value of","equations",
         "algebra", "geometry", "trigonometry", "logarithm", "probability","parentheses",
         "divide", "multiply", "add", "subtract", "sum", "product","roots","integer","integers","perfect square","power of",
-        "frac"
+        "frac","percent","%"
     ]
 
     
@@ -392,22 +396,23 @@ def reflective_agent(question,samples = 2):
     
     simple = [
         "facts:", "context:", "which", "what", "does", "is", "are",
-        "would", "could", "should"
+        "would", "could", "should","why","how"
     ]
     q_lower = question.lower()
     is_simple = any(ind in q_lower for ind in simple)
 
-    if is_simple:
+    if is_simple or len(question.split())<60:
         log_agent_use("SIMPLE_AGENT", question)
         return simple_agent(question)
     
     log_agent_use("REFLECTIVE_REASONING_AGENT", question)
-    base = self_consistent_agent(question,samples=2,agent_fn = batched_full_agent)
-    reflection = reflect(question,base)
+    #base = self_consistent_agent(question,samples=2,agent_fn = batched_full_agent)
+    #reflection = reflect(question,base)
 
-    if "FINAL:" in reflection:
-        return reflection.split("FINAL:")[1].strip()
-    return base
+    #if "FINAL:" in reflection:
+     #   return reflection.split("FINAL:")[1].strip()
+    #return base
+    return batched_full_agent(question)
 
 def solve_all_steps_batched(steps):
     steps_text = "\n".join(steps)
