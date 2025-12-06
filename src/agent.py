@@ -508,7 +508,7 @@ STEPS:
             results.append(l.split("ANSWER:")[1].strip())
     return results
 
-
+MAX_OUTPUT_CHARS = 4900
 def safe_call(prompt,temperature = 0,max_retries=1,timeout=5):
     def _call():
         return call_llm(prompt, temperature=temperature)
@@ -517,13 +517,21 @@ def safe_call(prompt,temperature = 0,max_retries=1,timeout=5):
         try:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(_call)
-                return future.result(timeout=timeout)
+                result =  future.result(timeout=timeout)
+                if result is None:
+                    return "Error:Empty output"
+                
+                if len(result)>MAX_OUTPUT_CHARS:
+                    result = result[:MAX_OUTPUT_CHARS].rstrip()
+                    
+                return result
+
         except concurrent.futures.TimeoutError:
             print("LLM TIMEOUT — retrying...")
             if attempt == max_retries - 1:
                 return "Error: Timeout"
         except Exception as e:
-            print(f"⚠️ LLM ERROR: {e}")
+            print(f"LLM ERROR: {e}")
             if attempt == max_retries - 1:
                 return f"Error: {str(e)}"
 
