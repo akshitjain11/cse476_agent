@@ -11,6 +11,7 @@ This repository contains a small LLM-driven agent and utilities used for the CSE
 	- `agent.py` — primary agent implementation (decompose/solve/aggregate/reflect)
 	- `run.py` — small runner demonstrating `reflective_agent`
 	- `generate_answer_template.py` — generates an answers JSON for autograder; reads `cse_476_final_project_test_data.json` by default
+    - `llm_api.py` — simple wrapper around the LLM HTTP API
 
 ## Requirements
 
