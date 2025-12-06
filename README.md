@@ -1,14 +1,6 @@
 # cse476_agent — LLM-based Judgment Detector / Agent
 
 This repository contains a small LLM-driven agent and utilities used for the CSE476 final project. The agent implements decomposition, step solving, aggregation, and simple reflective/self-consistent strategies for producing answers.
-## Table of contents
-- Project structure
-- Requirements
-- Setup (Windows PowerShell)
-- Running the agent (examples)
-- Files of interest
-- Troubleshooting
-- Contact
 
 ## Project structure
 
